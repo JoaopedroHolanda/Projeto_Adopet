@@ -3,6 +3,7 @@ import PetEntity from "../entities/PetEntity";
 import InterfacePetRepository from "./interfaces/InterfacePetRepository";
 import AdotanteEntity from "../entities/AdotanteEntity";
 import EnumPorte from "../enum/EnumPorte";
+import { NaoEncontrado } from "../utils/manipulaErros";
 
 export default class PetRepository implements InterfacePetRepository {
   private repository: Repository<PetEntity>;
@@ -24,12 +25,11 @@ export default class PetRepository implements InterfacePetRepository {
   async atualizaPet(
     id: number,
     newData: PetEntity
-  ): Promise<{ success: boolean; message?: string }> {
-    try {
-      const petToUpdate = await this.repository.findOne({ where: { id } });
+  ){
+    const petToUpdate = await this.repository.findOne({ where: { id } });
 
       if (!petToUpdate) {
-        return { success: false, message: "Pet não encontrado" };
+        throw new NaoEncontrado("Pet não encontrado")
       }
 
       Object.assign(petToUpdate, newData);
@@ -37,48 +37,34 @@ export default class PetRepository implements InterfacePetRepository {
       await this.repository.save(petToUpdate);
 
       return { success: true };
-    } catch (error) {
-      console.log(error);
-      return {
-        success: false,
-        message: "Ocorreu um erro ao tentar atualizar o pet.",
-      };
-    }
   }
 
-  async deletaPet(id: number): Promise<{ success: boolean; message?: string }> {
-    try {
-      const petToRemove = await this.repository.findOne({ where: { id } });
+  async deletaPet(id: number) {
+    const petToRemove = await this.repository.findOne({ where: { id } });
 
       if (!petToRemove) {
-        return { success: false, message: "Pet não encontrado" };
+        throw new NaoEncontrado("Pet não encontrado")
       }
 
       await this.repository.remove(petToRemove);
 
       return { success: true };
-    } catch (error) {
-      return {
-        success: false,
-        message: "Ocorreu um erro ao tentar excluir o pet.",
-      };
-    }
   }
 
   async adotaPet(
     idPet: number,
     idAdotante: number
-  ): Promise<{ success: boolean; message?: string }> {
+  ) {
     const pet = await this.repository.findOne({ where: { id: idPet } });
     if (!pet) {
-      return { success: false, message: "Pet não encontrado" };
+      throw new NaoEncontrado("Pet não encontrado")
     }
   
     const adotante = await this.adotanteRepository.findOne({
       where: { id: idAdotante },
     });
     if (!adotante) {
-      return { success: false, message: "Adotante não encontrado" };
+      throw new NaoEncontrado("Adotante não encontrado")
     }
   
     pet.adotante = adotante;
@@ -87,7 +73,7 @@ export default class PetRepository implements InterfacePetRepository {
     return { success: true };
   }
 
-  async buscaPetPorCampoGenerico<Tipo extends keyof PetEntity>(campo: Tipo, valor: PetEntity[Tipo]): Promise<PetEntity[]>{
+  async buscaPetPorCampoGenerico<Tipo extends keyof PetEntity>(campo: Tipo, valor: PetEntity[Tipo]){
     const pets = await this.repository.find({where: {[campo]: valor}})
     return pets
   }
